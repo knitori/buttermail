@@ -29,6 +29,23 @@ def send(message, subject, sender, recipients, *, encoding='UTF-8',
          attachments=None, cc=None, bcc=None, reply_to=None,
          signature_uid=None, signature_passphrase=None,
          host='localhost', port=25, ssl=False):
+    """
+
+    :param str | Text message:
+    :param str subject:
+    :param str sender:
+    :param list[str] recipients:
+    :param str encoding:
+    :param list[str | io.BufferedIOBase] attachments:
+    :param list[str] cc:
+    :param list[str] bcc:
+    :param str reply_to:
+    :param str signature_uid:
+    :param str signature_passphrase:
+    :param str host:
+    :param int port:
+    :param bool ssl:
+    """
 
     if isinstance(message, str):
         message = Text(message, encoding)
@@ -134,7 +151,8 @@ def _get_attachment(f):
 def build_attachments(attachments):
     """Create email.mime objects from attachments list.
 
-    `attachments` can be a list of file objects or filenames."""
+    :param list attachments: can be a list of file objects or filenames.
+    """
     for attachment in attachments:
         if hasattr(attachment, 'read'):
             # don't close passed file objects
