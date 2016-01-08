@@ -1,0 +1,4 @@
+CommonMark
+gnupg
+pytest
+python-magic
