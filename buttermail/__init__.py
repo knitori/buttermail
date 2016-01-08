@@ -11,7 +11,6 @@ x pgp signatures (uses gnupg)
 import os
 import smtplib
 import platform
-from contextlib import closing
 
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
@@ -26,18 +25,17 @@ from .pgp import sign_message
 from .types import Html, Text
 
 
-def send(message, subject, sender, recipients, *,
+def send(message, subject, sender, recipients, *, encoding='UTF-8',
          attachments=None, cc=None, bcc=None, reply_to=None,
          signature_uid=None, signature_passphrase=None,
-         host='localhost', port=25, ssl=False, html_body=None,
-         body_as_html=False, encoding='UTF-8'):
+         host='localhost', port=25, ssl=False):
 
     if isinstance(message, str):
         message = Text(message, encoding)
 
     msg = build_message(message, subject, sender, recipients,
-                        attachments=attachments, cc=cc, reply_to=reply_to,
                         encoding=encoding,
+                        attachments=attachments, cc=cc, reply_to=reply_to,
                         signature_uid=signature_uid,
                         signature_passphrase=signature_passphrase)
 
@@ -53,26 +51,27 @@ def send(message, subject, sender, recipients, *,
 
 
 def build_message(
-        message, subject, sender, recipients, *,
-        cc=None, attachments=None, reply_to=None, encoding='UTF-8',
+        message, subject, sender, recipients, *, encoding='UTF-8',
+        cc=None, attachments=None, reply_to=None,
         signature_uid=None, signature_passphrase=None):
 
     # create the textual message
     if isinstance(message, Html):
-        htmlmsg = MIMEText(message.body, 'html', message.encoding)
+        htmlmsg = MIMEText(message.body, 'html', message.encoding or encoding)
         make_quoted_printable(htmlmsg)
 
         if message.plain_version:
             textmsg = MIMEMultipart('alternative')
             plainmsg = MIMEText(message.plain_version,
-                                'plain', message.encoding)
+                                'plain', message.encoding or encoding)
             make_quoted_printable(plainmsg)
             textmsg.attach(htmlmsg)
             textmsg.attach(plainmsg)
         else:
             textmsg = htmlmsg
     else:
-        textmsg = MIMEText(message.body, 'plain', message.encoding)
+        textmsg = MIMEText(message.body, 'plain',
+                           message.encoding or encoding)
         make_quoted_printable(textmsg)
 
     # add attachments if necessary
@@ -108,30 +107,38 @@ def build_message(
     return msg
 
 
+def _get_attachment(f):
+    f.seek(0)
+    buf = f.read(1024)
+
+    mime_type = magic.from_buffer(buf, mime=True).decode('ascii')
+    if '/' in mime_type:
+        maintype, subtype = mime_type.split('/', 1)
+    else:
+        maintype, subtype = 'application', 'octet-stream'
+
+    f.seek(0)
+    if maintype == 'image':
+        msg = MIMEImage(f.read(), _subtype=subtype)
+    elif maintype == 'audio':
+        msg = MIMEAudio(f.read(), _subtype=subtype)
+    elif maintype == 'application' and subtype != 'octet-stream':
+        msg = MIMEApplication(f.read(), _subtype=subtype)
+    else:
+        msg = MIMEApplication(f.read())
+    msg['Content-Disposition'] = 'attachment; filename="{}"'\
+        .format(os.path.basename(f.name))
+    return msg
+
+
 def build_attachments(attachments):
+    """Create email.mime objects from attachments list.
+
+    `attachments` can be a list of file objects or filenames."""
     for attachment in attachments:
         if hasattr(attachment, 'read'):
-            fileobject = attachment
+            # don't close passed file objects
+            yield _get_attachment(attachment)
         else:
-            fileobject = open(attachment, 'rb')
-        with closing(fileobject) as f:
-            buf = f.read(1024)
-
-            mime_type = magic.from_buffer(buf, mime=True).decode('ascii')
-            if '/' in mime_type:
-                maintype, subtype = mime_type.split('/', 1)
-            else:
-                maintype, subtype = 'application', 'octet-stream'
-
-            f.seek(0)
-            if maintype == 'image':
-                msg = MIMEImage(f.read(), _subtype=subtype)
-            elif maintype == 'audio':
-                msg = MIMEAudio(f.read(), _subtype=subtype)
-            elif maintype == 'application' and subtype != 'octet-stream':
-                msg = MIMEApplication(f.read(), _subtype=subtype)
-            else:
-                msg = MIMEApplication(f.read())
-            msg['Content-Disposition'] = 'attachment; filename="{}"'\
-                .format(os.path.basename(f.name))
-            yield msg
+            with open(attachment, 'rb') as f:
+                yield _get_attachment(f)
