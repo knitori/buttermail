@@ -29,7 +29,7 @@ def send(message, subject, sender, recipients, *, encoding='UTF-8',
          attachments=None, cc=None, bcc=None, reply_to=None,
          signature_uid=None, signature_passphrase=None,
          host='localhost', port=25, ssl=False):
-    """
+    """Send an email.
 
     :param str | Text message:
     :param str subject:
