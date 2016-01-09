@@ -29,7 +29,7 @@ def send(message, subject, sender, recipients, *, encoding='UTF-8',
          attachments=None, cc=None, bcc=None, reply_to=None,
          signature_uid=None, signature_passphrase=None,
          host='localhost', port=25, ssl=False,
-         smtp_user=None, smtp_password=None):
+         smtp_user=None, smtp_password=None, headers=None):
     """Send an email.
 
     :param str | Text message:
@@ -48,6 +48,7 @@ def send(message, subject, sender, recipients, *, encoding='UTF-8',
     :param bool ssl:
     :param str smtp_user:
     :param str smtp_password:
+    :param dict[str, str] headers: Additional custom headers
     """
 
     if isinstance(message, str):
@@ -57,7 +58,8 @@ def send(message, subject, sender, recipients, *, encoding='UTF-8',
                         encoding=encoding,
                         attachments=attachments, cc=cc, reply_to=reply_to,
                         signature_uid=signature_uid,
-                        signature_passphrase=signature_passphrase)
+                        signature_passphrase=signature_passphrase,
+                        headers=headers)
 
     if ssl:
         smtp = smtplib.SMTP_SSL(host=host, port=port)
@@ -70,13 +72,14 @@ def send(message, subject, sender, recipients, *, encoding='UTF-8',
     all_recipients = recipients[:]
     all_recipients.extend(cc if cc is not None else [])
     all_recipients.extend(bcc if bcc is not None else [])
-    smtp.sendmail(sender, all_recipients, msg.as_bytes())
+    print(msg.as_string())
+    # smtp.sendmail(sender, all_recipients, msg.as_bytes())
 
 
 def build_message(
         message, subject, sender, recipients, *, encoding='UTF-8',
         cc=None, attachments=None, reply_to=None,
-        signature_uid=None, signature_passphrase=None):
+        signature_uid=None, signature_passphrase=None, headers=None):
 
     # create the textual message
     if isinstance(message, Html):
@@ -126,6 +129,14 @@ def build_message(
     msg['X-Mailer'] = 'Buttermail v0.1 (Python {}; {}-{})'.format(
         platform.python_version(), uname.machine, uname.system.lower()
     )
+
+    # Note: there might be cases when multiple headers with the same key
+    # are necessary.
+    for key, value in headers.items():
+        if key in msg:
+            msg.replace_header(key, value)
+        else:
+            msg[key] = value
 
     return msg
 
