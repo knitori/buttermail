@@ -72,8 +72,7 @@ def send(message, subject, sender, recipients, *, encoding='UTF-8',
     all_recipients = recipients[:]
     all_recipients.extend(cc if cc is not None else [])
     all_recipients.extend(bcc if bcc is not None else [])
-    print(msg.as_string())
-    # smtp.sendmail(sender, all_recipients, msg.as_bytes())
+    smtp.sendmail(sender, all_recipients, msg.as_bytes())
 
 
 def build_message(
