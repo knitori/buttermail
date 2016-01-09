@@ -28,7 +28,8 @@ from .types import Html, Text
 def send(message, subject, sender, recipients, *, encoding='UTF-8',
          attachments=None, cc=None, bcc=None, reply_to=None,
          signature_uid=None, signature_passphrase=None,
-         host='localhost', port=25, ssl=False):
+         host='localhost', port=25, ssl=False,
+         smtp_user=None, smtp_password=None):
     """Send an email.
 
     :param str | Text message:
@@ -45,6 +46,8 @@ def send(message, subject, sender, recipients, *, encoding='UTF-8',
     :param str host:
     :param int port:
     :param bool ssl:
+    :param str smtp_user:
+    :param str smtp_password:
     """
 
     if isinstance(message, str):
@@ -60,6 +63,9 @@ def send(message, subject, sender, recipients, *, encoding='UTF-8',
         smtp = smtplib.SMTP_SSL(host=host, port=port)
     else:
         smtp = smtplib.SMTP(host=host, port=port)
+
+    if smtp_user and smtp_password:
+        smtp.login(smtp_user, smtp_password)
 
     all_recipients = recipients[:]
     all_recipients.extend(cc if cc is not None else [])
