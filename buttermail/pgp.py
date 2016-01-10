@@ -2,12 +2,18 @@
 from email.mime.multipart import MIMEMultipart
 from email.message import Message
 
+import os
 import gnupg
 
 
-def sign_message(msg: Message, default_key=None, passphrase=None):
+def sign_message(msg: Message, default_key=None,
+                 passphrase=None, homedir=None):
     textmsg = msg.as_string().replace('\n', '\r\n')
-    gpg = gnupg.GPG(homedir='/home/nitori/.gnupg')
+    if homedir is None:
+        homebase = os.environ.get('HOME')
+        if homebase:
+            homedir = os.path.join(homebase, '.gnupg')
+    gpg = gnupg.GPG(homedir=homedir)
     signature = str(
         gpg.sign(textmsg, default_key=default_key,
                  detach=True, clearsign=False,
